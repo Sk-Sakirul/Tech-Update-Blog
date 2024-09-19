@@ -13,10 +13,12 @@ const Post = ({ post }) => {
       title: post?.title || "",
       slug: post?.$id || "",
       content: post?.content || "",
-      status: post?.status || "inactive",
+      status: post?.status || "active",
     },
   });
   
+  const [imagePreview, setImagePreview] = useState(post?.featuredImage ? dbService.getFilePreview(post.featuredImage) : null);
+
   const currentTheme = localStorage.getItem("theme");
   const toastTheme =
     ["light", "cupcake", "aqua", "cyberpunk", "wireframe"].includes(currentTheme)
@@ -112,19 +114,29 @@ const Post = ({ post }) => {
   useEffect(() => {
     const subscription = watch((value, { name }) => {
       if (name === "title") setValue("slug", slugTransform(value.title));
+      if (name === "image" && value.image?.[0]) {
+        const file = value.image[0];
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setImagePreview(reader.result);
+        };
+        reader.readAsDataURL(file);
+      }
     });
     return () => subscription.unsubscribe();
   }, [watch, slugTransform, setValue]);
 
   return (
     <>
-      <form onSubmit={handleSubmit(submit)} className="space-y-2">
-        {post?.featuredImage && (
-          <img
-            src={dbService.getFilePreview(post.featuredImage)}
-            alt={post.title}
-            className="aspect-auto"
+      <form onSubmit={handleSubmit(submit)} className="space-y-4">
+        {imagePreview && (
+          <div className="relative w-full h-64 md:h-96 overflow-hidden rounded-lg">
+            <img
+            src={imagePreview}
+            alt="Post cover"
+            className="object-cover w-full h-full transition-opacity duration-300 ease-in-out hover:opacity-75"
           />
+          </div>
         )}
 
         <div className="flex flex-wrap justify-between items-center">
@@ -132,6 +144,7 @@ const Post = ({ post }) => {
             type="file"
             accept="image/png, image/jpg, image/jpeg, image/gif, image/webp"
             {...register("image", { required: !post })}
+            className="file-input file-input-bordered w-full max-w-xs"
           />
           <span className="flex space-x-2 items-center">
             <svg
@@ -185,7 +198,7 @@ const Post = ({ post }) => {
           )}
         />
 
-        <Button type="submit" disabled={loading}>
+        <Button type="submit" disabled={loading} className="btn btn-primary w-full">
           {loading ? (
             <span className="loading loading-spinner"></span>
           ) : post ? (

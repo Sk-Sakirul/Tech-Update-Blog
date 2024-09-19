@@ -1,38 +1,47 @@
 import { useState } from "react";
-import authService from "../appwrite/auth";
 import { useNavigate } from "react-router-dom";
-import { login } from "../app/authSlice";
-import { Button, Input } from ".";
 import { useDispatch } from "react-redux";
 import { useForm } from "react-hook-form";
 import { toast } from "react-toastify";
+import { motion } from "framer-motion";
+import authService from "../appwrite/auth";
+import { login } from "../app/authSlice";
+import { Button, Input } from ".";
 
-function Signup() {
+export default function Signup() {
   const navigate = useNavigate();
   const [error, setError] = useState("");
   const dispatch = useDispatch();
-  const { register, handleSubmit } = useForm();
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm();
   const [loading, setLoading] = useState(false);
+
   const currentTheme = localStorage.getItem("theme") ?? "light";
-  const toastTheme =
-    currentTheme == "light" ||
-    currentTheme == "cupcake" ||
-    currentTheme == "aqua" ||
-    currentTheme == "cyberpunk" ||
-    currentTheme == "wireframe"
-      ? "light"
-      : "dark";
+  const toastTheme = [
+    "light",
+    "cupcake",
+    "aqua",
+    "cyberpunk",
+    "wireframe",
+  ].includes(currentTheme)
+    ? "light"
+    : "dark";
+
   const notifyOnSuccess = () =>
-    toast.success(`Account Created, Successfully`, {
+    toast.success("Account Created Successfully", {
       position: "top-right",
-      autoClose: 2000,
+      autoClose: 1000,
       hideProgressBar: false,
       closeOnClick: true,
       pauseOnHover: true,
       draggable: true,
       progress: undefined,
-      theme: `${toastTheme}`,
+      theme: toastTheme,
     });
+
   const notifyOnError = () =>
     toast.error("Something went wrong!", {
       position: "top-right",
@@ -42,7 +51,7 @@ function Signup() {
       pauseOnHover: true,
       draggable: true,
       progress: undefined,
-      theme: `${toastTheme}`,
+      theme: toastTheme,
     });
 
   const create = async (data) => {
@@ -51,16 +60,13 @@ function Signup() {
     try {
       const userData = await authService.createAccount(data);
       if (userData) {
-        const userData = await authService.getCurrentUser();
-        if (userData) dispatch(login(userData));
-        // better way?
+        const currentUser = await authService.getCurrentUser();
+        if (currentUser) dispatch(login(currentUser));
         document.getElementById("signup").close();
-        setLoading(false);
         navigate("/");
-        notifyOnSuccess(userData.name);
+        notifyOnSuccess();
       }
     } catch (error) {
-      setLoading(false);
       notifyOnError();
       setError(error.message);
     } finally {
@@ -69,64 +75,111 @@ function Signup() {
   };
 
   return (
-    <>
-      <h2 className="text-center text-2xl font-bold leading-tight">
-        Sign up to create account
-      </h2>
-      <p className="text-center mt-2">
-        <a>
-          Already have an account?{" "}
-          <span
-            className="link text-blue-600"
-            onClick={() => {
-              document.getElementById("signup").close();
-              document.getElementById("login").showModal();
-            }}
-          >
-            Login
-          </span>
-        </a>
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5 }}
+      className="w-full max-w-md mx-auto p-6 bg-base-100 rounded-lg"
+    >
+      <h2 className="text-3xl font-bold text-center mb-6">Create an Account</h2>
+      <p className="text-center text-base-content/70 mb-8">
+        Already have an account?{" "}
+        <button
+          className="text-primary hover:underline focus:outline-none"
+          onClick={() => {
+            document.getElementById("signup").close();
+            document.getElementById("login").showModal();
+          }}
+        >
+          Log in
+        </button>
       </p>
-      {error && <p className="text-red-600 mt-8 text-center">{error}</p>}
-      <form onSubmit={handleSubmit(create)} className="mt-4">
-        <div className="space-y-5">
+
+      {error && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="bg-error/20 text-error p-3 rounded-md mb-6"
+        >
+          {error}
+        </motion.div>
+      )}
+
+      <form onSubmit={handleSubmit(create)} className="space-y-6">
+        <div>
+          <label htmlFor="email" className="block text-sm font-medium mb-2">
+            Full Name
+          </label>
           <Input
             type="name"
             placeholder="Enter your name"
+            error={errors.name?.message}
             {...register("name", {
-              required: true,
+              required: "Name is required",
             })}
           />
+        </div>
+
+        <div>
+          <label htmlFor="email" className="block text-sm font-medium mb-2">
+            Email Address
+          </label>
           <Input
-            placeholder="Enter your email"
             type="email"
+            placeholder="Enter your email"
+            error={errors.email?.message}
             {...register("email", {
-              required: true,
-              validate: {
-                matchPatern: (value) =>
-                  /^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/.test(value) ||
-                  "Email address must be a valid address",
+              required: "Email is required",
+              pattern: {
+                value: /^\S+@\S+$/i,
+                message: "Invalid email address",
               },
             })}
           />
+        </div>
+
+        <div>
+          <label htmlFor="password" className="block text-sm font-medium mb-2">
+            Password
+          </label>
           <Input
             type="password"
             placeholder="Enter your password"
+            error={errors.password?.message}
             {...register("password", {
-              required: true,
+              required: "Password is required",
+              minLength: {
+                value: 8,
+                message: "Password must be at least 8 characters long",
+              },
             })}
           />
-          <Button type="submit" className="btn btn-lg w-full">
-            {loading ? (
-              <span className="loading loading-spinner"></span>
-            ) : (
-              "Create Account"
-            )}
-          </Button>
         </div>
+
+        <Button
+          type="submit"
+          className="w-full btn btn-primary"
+          disabled={loading}
+        >
+          {loading ? (
+            <span className="loading loading-spinner loading-sm"></span>
+          ) : (
+            "Create Account"
+          )}
+        </Button>
       </form>
-    </>
+
+      <p className="mt-8 text-center text-sm text-base-content/70">
+        By signing up, you agree to our{" "}
+        <a href="#" className="text-primary hover:underline">
+          Terms of Service
+        </a>{" "}
+        and{" "}
+        <a href="#" className="text-primary hover:underline">
+          Privacy Policy
+        </a>
+        .
+      </p>
+    </motion.div>
   );
 }
-
-export default Signup;

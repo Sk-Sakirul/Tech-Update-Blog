@@ -1,126 +1,155 @@
-import { useForm } from "react-hook-form";
-import { Input, Button } from ".";
-import {  useNavigate } from "react-router-dom";
-import { useState } from "react";
-import authService from "../appwrite/auth";
-import { login as authLogin } from "../app/authSlice";
-import { useDispatch } from "react-redux";
-import { toast } from "react-toastify";
 
-const Login = () => {
-  const { register, handleSubmit, setValue } = useForm();
-  const navigate = useNavigate();
-  const dispatch = useDispatch();
-  const currentTheme = localStorage.getItem("theme") ?? "light";
-  const toastTheme =
-    currentTheme == "light" ||
-    currentTheme == "cupcake" ||
-    currentTheme == "aqua" ||
-    currentTheme == "cyberpunk" ||
-    currentTheme == "wireframe"
-      ? "light"
-      : "dark";
-  const notifyOnSuccess = (user) =>
-    toast.success(`Welcome, ${user}`, {
-      position: "top-right",
-      autoClose: 2000,
-      hideProgressBar: false,
-      closeOnClick: true,
-      pauseOnHover: true,
-      draggable: true,
-      progress: undefined,
-      theme: `${toastTheme}`,
-    });
-  const notifyOnError = () =>
-    toast.error("Something went wrong!", {
-      position: "top-right",
-      autoClose: 2000,
-      hideProgressBar: false,
-      closeOnClick: true,
-      pauseOnHover: true,
-      draggable: true,
-      progress: undefined,
-      theme: `${toastTheme}`,
-    });
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
+import { useState } from 'react'
+import { useForm } from 'react-hook-form'
+import { useNavigate } from 'react-router-dom'
+import { useDispatch } from 'react-redux'
+import { toast } from 'react-toastify'
+import { motion } from 'framer-motion'
+import authService from '../appwrite/auth'
+import { login as authLogin } from '../app/authSlice'
+import { Input, Button } from '.'
+
+export default function Login() {
+  const { register, handleSubmit, formState: { errors } } = useForm()
+  const navigate = useNavigate()
+  const dispatch = useDispatch()
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
+
+  const currentTheme = localStorage.getItem('theme') ?? 'light'
+  const toastTheme = ['light', 'cupcake', 'aqua', 'cyberpunk', 'wireframe'].includes(currentTheme) ? 'light' : 'dark'
+
+  const notifyOnSuccess = (user) => toast.success(`Welcome, ${user}`, {
+    position: 'top-right',
+    autoClose: 1000,
+    hideProgressBar: false,
+    closeOnClick: true,
+    pauseOnHover: true,
+    draggable: true,
+    progress: undefined,
+    theme: toastTheme,
+  })
+
+  const notifyOnError = () => toast.error('Something went wrong!', {
+    position: 'top-right',
+    autoClose: 2000,
+    hideProgressBar: false,
+    closeOnClick: true,
+    pauseOnHover: true,
+    draggable: true,
+    progress: undefined,
+    theme: toastTheme,
+  })
 
   const login = async (data) => {
-    setError("");
+    setError('')
     try {
-      setLoading(true);
-      const session = await authService.login(data);
+      setLoading(true)
+      const session = await authService.login(data)
       if (session) {
-        const userData = await authService.getCurrentUser();
-        if (userData) dispatch(authLogin(userData));
-        // better way?
-        document.getElementById("login").close();
-        setLoading(false);
-        navigate("/");
-        notifyOnSuccess(userData.name);
+        const userData = await authService.getCurrentUser()
+        if (userData) dispatch(authLogin(userData))
+        document.getElementById('login').close()
+        navigate('/')
+        notifyOnSuccess(userData.name)
       }
     } catch (error) {
-      setLoading(false);
-      notifyOnError();
-      setError(error.message);
+      notifyOnError()
+      setError(error.message)
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   return (
-    <div className="w-full">
-      <h2 className="text-center text-2xl font-bold leading-tight">
-        Sign in to your account
-      </h2>
-      <p className="text-center mt-4">
-        <a>
-          Don't have an account?{" "}
-          <span
-            className="link text-blue-600"
+    <div className="w-full max-w-md mx-auto p-6 bg-base-100 rounded-lg">
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+      >
+        <h2 className="text-3xl font-bold text-center mb-6">Login</h2>
+        <p className="text-center text-base-content/70 mb-8">
+          Don't have an account?{' '}
+          <button
+            className="text-primary hover:underline focus:outline-none"
             onClick={() => {
-              document.getElementById("signup").showModal();
-              document.getElementById("login").close();
+              document.getElementById('signup').showModal()
+              document.getElementById('login').close()
             }}
           >
             Sign up
-          </span>
-        </a>
-      </p>
+          </button>
+        </p>
 
-      {error && <p className="text-red-600 mt-8 text-center">{error}</p>}
-      <form onSubmit={handleSubmit(login)} className="mt-4">
-        <div className="space-y-5">
-          <Input
-            placeholder="Enter your email"
-            type="email"
-            {...register("email", {
-              required: true,
-              validate: {
-                matchPatern: (value) =>
-                  /^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/.test(value) ||
-                  "Email address must be a valid address",
-              },
-            })}
-          />
-          <Input
-            type="password"
-            placeholder="Enter your password"
-            {...register("password", {
-              required: true,
-            })}
-          />
-          <Button type="submit" className="btn btn-lg w-full">
+        {error && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="bg-error/20 text-error p-3 rounded-md mb-6"
+          >
+            {error}
+          </motion.div>
+        )}
+
+        <form onSubmit={handleSubmit(login)} className="space-y-6">
+          <div>
+            <label htmlFor="email" className="block text-sm font-medium mb-2">
+              Email Address
+            </label>
+            <Input
+              id="email"
+              type="email"
+              placeholder="Enter your email"
+              {...register('email', {
+                required: 'Email is required',
+                pattern: {
+                  value: /^\S+@\S+$/i,
+                  message: 'Invalid email address',
+                },
+              })}
+              className={`w-full ${errors.email ? 'input-error' : ''}`}
+            />
+            {errors.email && (
+              <p className="mt-1 text-error text-sm">{errors.email.message}</p>
+            )}
+          </div>
+
+          <div>
+            <label htmlFor="password" className="block text-sm font-medium mb-2">
+              Password
+            </label>
+            <Input
+              id="password"
+              type="password"
+              placeholder="Enter your password"
+              {...register('password', { required: 'Password is required' })}
+              className={`w-full ${errors.password ? 'input-error' : ''}`}
+            />
+            {errors.password && (
+              <p className="mt-1 text-error text-sm">{errors.password.message}</p>
+            )}
+          </div>
+
+          <Button
+            type="submit"
+            className="w-full btn btn-primary"
+            disabled={loading}
+          >
             {loading ? (
-              <span className="loading loading-spinner"></span>
+              <span className="loading loading-spinner loading-sm"></span>
             ) : (
-              "Login"
+              'Sign In'
             )}
           </Button>
-        </div>
-      </form>
-    </div>
-  );
-};
+        </form>
 
-export default Login;
+        <div className="mt-6 text-center">
+          <a href="#" className="text-sm text-primary hover:underline">
+            Forgot your password?
+          </a>
+        </div>
+      </motion.div>
+    </div>
+  )
+}

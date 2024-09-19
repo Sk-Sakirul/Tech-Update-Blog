@@ -43,6 +43,17 @@ class AuthService {
             console.error("Appwrite service :: logout", error);
         }
     }
+
+   // Update Current User (name, email, password)
+   async updateCurrentUser(data) {
+    try {
+      const updatedUser = await this.account.updatePrefs(data);
+      return updatedUser;
+    } catch (error) {
+      console.error("Appwrite service :: updateCurrentUser", error);
+      throw error;
+    }
+  }
 }
 
 const authService = new AuthService();

@@ -1,66 +1,73 @@
-import dbService from "../appwrite/config";
-import { Link } from "react-router-dom";
+import { useState } from 'react';
+import { Link } from 'react-router-dom';
+import dbService from '../appwrite/config';
+import { useSelector } from 'react-redux';
 
 const PostCard = ({ $id, title, featuredImage, $createdAt, author }) => {
-  
+  const [imageLoaded, setImageLoaded] = useState(false);
+
+  const posts = useSelector((state) => state.post.posts)
+  const post = posts.find((post) => post.$id === $id)
+  const userData = useSelector((state) => state.auth.userData)
+  const isAuthor = post && userData ? post.userId === userData.$id : false
 
   const getRelativeDate = (date) => {
+    const rtf = new Intl.RelativeTimeFormat('en', { numeric: 'auto' });
     const now = new Date();
     const diff = now - date;
-    const seconds = Math.floor(diff / 1000);
-    const minutes = Math.floor(seconds / 60);
-    const hours = Math.floor(minutes / 60);
-    const days = Math.floor(hours / 24);
-    const months = Math.floor(days / 30);
-    const years = Math.floor(months / 12);
-
-    if (years > 0) return years + (years === 1 ? " year ago" : " years ago");
-    if (months > 0)
-      return months + (months === 1 ? " month ago" : " months ago");
-    if (days > 0) return days + (days === 1 ? " day ago" : " days ago");
-    if (hours > 0) return hours + (hours === 1 ? " hour ago" : " hours ago");
-    if (minutes > 0)
-      return minutes + (minutes === 1 ? " minute ago" : " minutes ago");
-    if (seconds > 0)
-      return seconds + (seconds === 1 ? " second ago" : " seconds ago");
-    return "Just now";
+    const diffDays = Math.round(diff / (1000 * 60 * 60 * 24));
+    
+    if (diffDays === 0) return 'Today';
+    if (diffDays === 1) return 'Yesterday';
+    if (diffDays < 30) return rtf.format(-diffDays, 'day');
+    if (diffDays < 365) return rtf.format(-Math.round(diffDays / 30), 'month');
+    return rtf.format(-Math.round(diffDays / 365), 'year');
   };
 
-
   return (
-    <Link to={`/post/${$id}`}>
-      <div className="rounded-md overflow-hidden cursor-pointer bg-base-100 max-h-[30rem] shadow hover:shadow-lg active:scale-95 ">
-        <figure>
+    <Link to={`/post/${$id}`} className="block h-full">
+      <article className="bg-base-100 rounded-lg shadow-md hover:shadow-xl transition-shadow duration-300 overflow-hidden h-full flex flex-col">
+        <div className="relative pt-[56.25%] bg-gray-200">
+          {!imageLoaded && (
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="loading loading-spinner loading-md"></div>
+            </div>
+          )}
           <img
             src={dbService.getFilePreview(featuredImage)}
-            className="max-h-[12rem] w-full object-cover object-top"
             alt={title}
+            className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${
+              imageLoaded ? 'opacity-100' : 'opacity-0'
+            }`}
+            onLoad={() => setImageLoaded(true)}
           />
-        </figure>
-        <div className="card-body">
-          <div className="avatar space-x-2">
-            <div className="w-6 rounded">
-              <img
-                src="https://thispersondoesnotexist.com/"
-                width="20px"
-                height="20px"
-              />
+        </div>
+        <div className="p-4 flex-grow flex flex-col justify-between">
+          <div>
+            <h2 className="text-lg font-semibold mb-2 line-clamp-2 hover:underline" title={title}>
+              {title}
+            </h2>
+            <div className="flex items-center space-x-4 mb-4">
+              <div className="avatar">
+                <div className="w-9 h-9 rounded-full">
+                  <img
+                    src="https://thispersondoesnotexist.com/"
+                    alt={`${author}'s avatar`}
+                    className="object-cover"
+                  />
+                </div>
+              </div>
+              <span className="text-sm font-medium text-gray-700">{isAuthor ? userData.name : 'Anonymous'}</span>
             </div>
-            <p className="text-lg font-medium">{author}</p>
           </div>
-          <h2
-            className="card-title line-clamp-2 text-truncate text-pretty"
-            title={title}
-          >
-            {title}
-          </h2>
-          <time className="block text-xs text-gray-500">
-            {getRelativeDate(new Date($createdAt))}{" "}
+          <time className="text-xs text-gray-500">
+            {getRelativeDate(new Date($createdAt))}
           </time>
         </div>
-      </div>
+      </article>
     </Link>
   );
 };
 
 export default PostCard;
+
