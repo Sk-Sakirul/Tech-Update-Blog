@@ -137,7 +137,6 @@ export default function ResponsiveHeader() {
                     <button
                       onClick={() => {
                         setIsProfileDropdownOpen(false)
-                        // Add logout logic here
                       }}
                       className="block w-full text-left px-4 py-2 text-sm hover:bg-base-200"
                     >
@@ -248,11 +247,10 @@ export default function ResponsiveHeader() {
                 <button
                   onClick={() => {
                     setIsMenuOpen(false)
-                    // Add logout logic here
                   }}
                   className="btn btn-ghost w-full justify-start"
                 >
-                  Logout
+                  <LogoutBtn />
                 </button>
               </>
             ) : (
