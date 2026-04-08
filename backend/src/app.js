@@ -17,19 +17,22 @@ const __dirname = path.dirname(__filename);
 const app = express();
 app.set("trust proxy", 1);
 
-app.use(
-  cors({
-    origin(origin, callback) {
-      if (!origin || env.corsOrigins.includes(origin)) {
-        callback(null, true);
-        return;
-      }
+const corsOptions = {
+  origin(origin, callback) {
+    if (!origin || env.corsOrigins.includes(origin)) {
+      callback(null, true);
+      return;
+    }
 
-      callback(new ApiError(403, "CORS origin is not allowed"));
-    },
-    credentials: true,
-  })
-);
+    callback(new ApiError(403, `CORS origin is not allowed: ${origin}`));
+  },
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+};
+
+app.use(cors(corsOptions));
+app.options("*", cors(corsOptions));
 app.use(express.json({ limit: "2mb" }));
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
