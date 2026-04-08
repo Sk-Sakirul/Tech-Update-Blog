@@ -1,0 +1,7 @@
+export { default as Home }      from './Home'
+export { default as AddPost }   from './AddPost'
+export { default as EditPost }  from './EditPost'
+export { default as ViewPost }  from './ViewPost'
+export { default as Drafts }    from './Drafts'
+export { default as Dashboard } from './Dashboard'
+export { default as NotFound }  from './NotFound'
