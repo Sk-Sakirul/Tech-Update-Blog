@@ -23,26 +23,27 @@ export default function Dashboard() {
   const userData  = useSelector((s) => s.auth.userData)
   const { posts } = useSelector((s) => s.post)
 
-  const [fetching, setFetching] = useState(false)
+  const [fetching, setFetching] = useState(true)
   const [deleting, setDeleting] = useState(false)
   const [confirmId, setConfirmId] = useState(null)
 
-  // Fetch if empty
+  // ✅ Always fetch ALL posts fresh on Dashboard mount.
+  //    We must not rely on the Redux cache because it may be stale
+  //    (e.g. another user's session, or posts added from another device).
   useEffect(() => {
-    if (!posts.length) {
-      setFetching(true)
-      dbService.getPosts()
-        .then((res) => { if (res) dispatch(setPosts(res.documents)) })
-        .catch(() => {
-          toastError('Could not load your dashboard data.')
-        })
-        .finally(() => setFetching(false))
-    }
-  }, [dispatch, posts.length])
+    setFetching(true)
+    dbService.getPosts()
+      .then((res) => {
+        if (res?.documents) dispatch(setPosts(res.documents))
+      })
+      .catch(() => toastError('Could not load your dashboard data.'))
+      .finally(() => setFetching(false))
+  }, [dispatch])
 
-  const myPosts    = posts.filter((p) => p.userId === userData?.$id)
-  const published  = myPosts.filter((p) => p.status === 'active')
-  const drafts     = myPosts.filter((p) => p.status === 'inactive')
+  // ✅ Filter to only the current user's posts AFTER fetching
+  const myPosts   = posts.filter((p) => p.userId === userData?.$id)
+  const published = myPosts.filter((p) => p.status === 'active')
+  const drafts    = myPosts.filter((p) => p.status === 'inactive')
 
   const handleDelete = async () => {
     const post = posts.find((p) => p.$id === confirmId)
@@ -62,9 +63,9 @@ export default function Dashboard() {
   }
 
   const statsCards = [
-    { label: 'Total posts', value: myPosts.length, icon: FileText, color: 'var(--accent)' },
+    { label: 'Total posts', value: myPosts.length,   icon: FileText,   color: 'var(--accent)' },
     { label: 'Published',   value: published.length, icon: TrendingUp, color: 'var(--success)' },
-    { label: 'Drafts',      value: drafts.length,  icon: BookMarked, color: 'var(--accent-2)' },
+    { label: 'Drafts',      value: drafts.length,    icon: BookMarked, color: 'var(--accent-2)' },
   ]
 
   return (
@@ -91,7 +92,9 @@ export default function Dashboard() {
                 <Icon className="h-4 w-4" style={{ color }} />
               </div>
             </div>
-            <p className="mt-3 font-serif text-4xl font-bold text-ink">{value}</p>
+            <p className="mt-3 font-serif text-4xl font-bold text-ink">
+              {fetching ? <span className="animate-pulse text-ink-3 text-2xl">…</span> : value}
+            </p>
           </div>
         ))}
       </div>

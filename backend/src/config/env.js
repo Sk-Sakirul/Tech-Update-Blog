@@ -26,6 +26,14 @@ export const env = {
     process.env.COOKIE_SAME_SITE || (process.env.NODE_ENV === "production" ? "none" : "lax"),
   cookieSecure:
     process.env.COOKIE_SECURE === "true" || process.env.NODE_ENV === "production",
+  // Cloudinary – when set, images are stored in the cloud (survives server restarts)
+  cloudinaryCloudName: process.env.CLOUDINARY_CLOUD_NAME || "",
+  cloudinaryApiKey: process.env.CLOUDINARY_API_KEY || "",
+  cloudinaryApiSecret: process.env.CLOUDINARY_API_SECRET || "",
+  // Derived helper: true when all three Cloudinary vars are present
+  get useCloudinary() {
+    return !!(this.cloudinaryCloudName && this.cloudinaryApiKey && this.cloudinaryApiSecret);
+  },
 };
 
 if (!env.mongoUri) {

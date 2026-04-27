@@ -1,13 +1,25 @@
 import conf from "../conf/conf";
 
+// ─── Session hint ────────────────────────────────────────────────────────────
+// We store a lightweight flag in localStorage so we can skip the /api/auth/me
+// call (and its noisy 401) when we already know there is no active session.
+const SESSION_KEY = "__session";
+
+const setSessionHint = () => localStorage.setItem(SESSION_KEY, "1");
+const clearSessionHint = () => localStorage.removeItem(SESSION_KEY);
+const hasSessionHint = () => localStorage.getItem(SESSION_KEY) === "1";
+
+// ─── Core request handler ─────────────────────────────────────────────────────
 const request = async (path, options = {}) => {
   let response;
 
   try {
     response = await fetch(`${conf.apiBaseUrl}${path}`, {
-      credentials: "include",
+      credentials: "include", // required for httpOnly cookies
       headers: {
-        "Content-Type": "application/json",
+        ...(options.body instanceof FormData
+          ? {} // ❗ let the browser set multipart boundary automatically
+          : { "Content-Type": "application/json" }),
         ...(options.headers || {}),
       },
       ...options,
@@ -18,54 +30,87 @@ const request = async (path, options = {}) => {
 
   const data = await response.json().catch(() => ({}));
 
-  if (!response.ok) {
-    throw new Error(data.message || "Request failed");
+  // 401 → treat as "not logged in", not a hard error
+  if (response.status === 401) {
+    return { success: false, user: null, message: "Unauthorized" };
   }
 
-  return data;
+  if (!response.ok) {
+    throw new Error(data.message || "Something went wrong");
+  }
+
+  return { success: true, ...data };
 };
 
+// ─── Auth service ─────────────────────────────────────────────────────────────
 class AuthService {
+  // ✅ Register
   async createAccount({ email, password, name }) {
-    const data = await request("/auth/register", {
+    const res = await request("/auth/register", {
       method: "POST",
       body: JSON.stringify({ email, password, name }),
     });
 
-    return data.user;
+    if (!res.success) throw new Error(res.message);
+
+    setSessionHint(); // mark session as active
+    return res.user;
   }
 
+  // ✅ Login
   async login({ email, password }) {
-    const data = await request("/auth/login", {
+    const res = await request("/auth/login", {
       method: "POST",
       body: JSON.stringify({ email, password }),
     });
 
-    return data.user;
+    if (!res.success) throw new Error(res.message);
+
+    setSessionHint(); // mark session as active
+    return res.user;
   }
 
+  // ✅ Get current user
+  // Skips the network call entirely when localStorage says there is no session
+  // → eliminates the 401 console warning on every page load for logged-out users
   async getCurrentUser() {
+    if (!hasSessionHint()) {
+      // No session hint → user was never logged in (or explicitly logged out)
+      return { user: null, error: null };
+    }
+
+    const res = await request("/auth/me");
+
+    if (!res.success) {
+      // Cookie expired / invalidated on the server side
+      clearSessionHint();
+      return { user: null, error: null };
+    }
+
+    return { user: res.user, error: null };
+  }
+
+  // ✅ Logout
+  async logout() {
+    clearSessionHint(); // clear immediately so getCurrentUser is skipped next load
     try {
-      const data = await request("/auth/me");
-      return data.user;
-    } catch (_error) {
-      return null;
+      await request("/auth/logout", { method: "POST" });
+      return { success: true };
+    } catch {
+      return { success: false };
     }
   }
 
-  async logout() {
-    return request("/auth/logout", {
-      method: "POST",
-    });
-  }
-
+  // ✅ Update profile
   async updateCurrentUser(data) {
-    const response = await request("/auth/me", {
+    const res = await request("/auth/me", {
       method: "PATCH",
       body: JSON.stringify(data),
     });
 
-    return response.user;
+    if (!res.success) throw new Error(res.message);
+
+    return res.user;
   }
 }
 

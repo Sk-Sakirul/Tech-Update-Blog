@@ -27,6 +27,15 @@ const uploadSchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
+    // ✅ "cloudinary" | "local" — undefined on old records (treated as local)
+    storageType: {
+      type: String,
+      enum: ["cloudinary", "local"],
+    },
+    // Cloudinary public_id needed for deletion
+    cloudinaryPublicId: {
+      type: String,
+    },
   },
   { timestamps: true }
 );

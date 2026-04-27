@@ -9,7 +9,7 @@ import ConfirmDialog from '../components/ui/ConfirmDialog'
 import Spinner from '../components/ui/Spinner'
 import { Edit3, Trash2, Clock, Calendar, ChevronLeft, Expand } from 'lucide-react'
 
-const getRelativeDate = (date) => {
+const formatDate = (date) => {
   const d = new Date(date)
   return d.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
 }
@@ -26,30 +26,41 @@ export default function ViewPost() {
   const posts = useSelector((s) => s.post.posts)
   const userData = useSelector((s) => s.auth.userData)
 
-  const [post, setPost] = useState(() => posts.find((p) => p.$id === slug))
-  const [loading, setLoading] = useState(!post)
+  const [post, setPost] = useState(null)
+  const [loading, setLoading] = useState(true)
   const [deleting, setDeleting] = useState(false)
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [lightbox, setLightbox] = useState(false)
 
-  const isAuthor = post && userData ? post.userId === userData.$id : false
-  const authorName = isAuthor ? userData?.name : post?.author?.name || 'Anonymous'
-  const initial = authorName?.trim()?.[0]?.toUpperCase() || 'A'
-  const imgSrc = post?.featuredImageUrl || (post?.featuredImage ? dbService.getFilePreview(post.featuredImage) : null)
-
+  // ✅ Always fetch the post fresh from the server so that:
+  //    1. `post.userId` is guaranteed to be the latest value from the DB
+  //    2. `isAuthor` check is accurate even when the Redux cache is stale
+  //    3. Guests who land directly on a post URL get the full post
   useEffect(() => {
-    if (post) { setLoading(false); return }
     setLoading(true)
     dbService.getPost(slug)
       .then((fetched) => {
         if (fetched) {
           setPost(fetched)
+          // Update Redux cache so navigation back to Home/Dashboard is instant
           dispatch(setPosts([fetched, ...posts.filter((p) => p.$id !== fetched.$id)]))
-        } else navigate('/')
+        } else {
+          navigate('/')
+        }
       })
       .catch(() => navigate('/'))
       .finally(() => setLoading(false))
-  }, [dispatch, navigate, post, posts, slug])
+  // We intentionally only depend on `slug` so it re-fetches when the URL changes
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [slug])
+
+  // ✅ Role-based: only the post author sees Edit / Delete buttons
+  //    Compare post.userId (string from DB) to userData.$id (string from Redux)
+  const isAuthor = !!(post && userData && post.userId === userData.$id)
+
+  const authorName = post?.author?.name || (isAuthor ? userData?.name : 'Anonymous')
+  const initial = authorName?.trim()?.[0]?.toUpperCase() || 'A'
+  const imgSrc = post?.featuredImageUrl || (post?.featuredImage ? dbService.getFilePreview(post.featuredImage) : null)
 
   const handleDelete = async () => {
     setDeleting(true)
@@ -127,7 +138,7 @@ export default function ViewPost() {
               <div className="mt-0.5 flex items-center gap-3 text-xs text-ink-3">
                 <span className="flex items-center gap-1">
                   <Calendar className="h-3 w-3" />
-                  {getRelativeDate(post.$createdAt)}
+                  {formatDate(post.$createdAt)}
                 </span>
                 <span className="flex items-center gap-1">
                   <Clock className="h-3 w-3" />
@@ -137,6 +148,7 @@ export default function ViewPost() {
             </div>
           </div>
 
+          {/* ✅ Edit / Delete shown ONLY to the authenticated author */}
           {isAuthor && (
             <div className="flex items-center gap-2">
               <Link to={`/edit-post/${post.$id}`} className="btn btn-secondary btn-sm">
@@ -161,6 +173,29 @@ export default function ViewPost() {
           <p className="text-sm text-ink-3">
             Written by <span className="font-medium text-ink">{authorName}</span>
           </p>
+
+          {/* ✅ Guest prompt: nudge readers to create an account */}
+          {!userData && (
+            <div className="mt-6 rounded-2xl border p-6 text-center" style={{ borderColor: 'var(--border)', backgroundColor: 'var(--surface)' }}>
+              <p className="text-sm font-semibold text-ink">Want to share your own story?</p>
+              <p className="mt-1 text-xs text-ink-3">Create a free account and start writing today.</p>
+              <div className="mt-4 flex justify-center gap-3">
+                <button
+                  className="btn btn-primary btn-sm"
+                  onClick={() => document.getElementById('modal-signup')?.showModal()}
+                >
+                  Get started — it's free
+                </button>
+                <button
+                  className="btn btn-secondary btn-sm"
+                  onClick={() => document.getElementById('modal-login')?.showModal()}
+                >
+                  Sign in
+                </button>
+              </div>
+            </div>
+          )}
+
           <Link to="/" className="mt-4 inline-flex btn btn-secondary btn-sm">
             Back to more stories
           </Link>

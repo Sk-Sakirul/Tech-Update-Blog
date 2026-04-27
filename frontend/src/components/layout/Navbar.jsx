@@ -63,7 +63,8 @@ export default function Navbar() {
 
   const isHome = location.pathname === '/'
   const isDrafts = location.pathname === '/drafts'
-  const showSearch = authStatus && (isHome || isDrafts)
+  // Search is visible to everyone on home; drafts search only for logged-in users
+  const showSearch = isHome || (authStatus && isDrafts)
   const avatarInitial = userData?.name?.trim()[0]?.toUpperCase() || 'U'
 
   return (

@@ -17,10 +17,11 @@ export default function App() {
 
   useEffect(() => {
     authService.getCurrentUser()
-      .then((userData) => {
-        if (userData) dispatch(login(userData))
+      .then(({ user }) => {
+        if (user) dispatch(login(user))
         else dispatch(logout())
       })
+      .catch(() => dispatch(logout()))
       .finally(() => setLoading(false))
   }, [dispatch])
 

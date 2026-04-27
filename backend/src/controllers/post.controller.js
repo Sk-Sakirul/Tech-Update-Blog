@@ -68,6 +68,9 @@ export const getPosts = asyncHandler(async (req, res) => {
   }
 
   if (mine === "true") {
+    if (!req.user) {
+      return res.status(401).json({ success: false, message: "Authentication required" });
+    }
     filters.userId = req.user._id;
   }
 

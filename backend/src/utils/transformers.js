@@ -3,16 +3,24 @@ import { env } from "../config/env.js";
 
 /**
  * Builds the public URL for an uploaded file.
- * The file path stored in DB is like "uploads/1234-image.png".
- * The static server serves files at "/uploads/<filename>".
- * We extract just the filename to avoid double-path "/uploads/uploads/..." bug.
+ *
+ * Two cases:
+ *  1. Cloudinary storage: `featuredImage.path` IS already the full CDN URL
+ *     → return it as-is.
+ *  2. Local disk storage: `featuredImage.path` is like "uploads/1234-image.png"
+ *     → build a URL from the server origin.
  */
 const getFeaturedImageUrl = (req, featuredImage) => {
   if (!featuredImage?.path) {
     return null;
   }
 
-  // Extract just the filename from the stored path (e.g. "uploads/abc.png" → "abc.png")
+  // ✅ Cloudinary: path is a full HTTPS URL — return directly
+  if (featuredImage.path.startsWith("http")) {
+    return featuredImage.path;
+  }
+
+  // ✅ Local disk: build URL from server origin
   const filename = path.basename(featuredImage.path.replace(/\\/g, "/"));
   const requestOrigin = `${req.protocol}://${req.get("host")}`;
   const publicOrigin = env.publicServerUrl || requestOrigin;

@@ -5,28 +5,42 @@ import dbService from '../appwrite/config'
 import { setPosts } from '../app/postSlice'
 import { Post } from '../components'
 import Spinner from '../components/ui/Spinner'
+import { toastError } from '../components/ui/Toast'
 
 export default function EditPost() {
   const { slug }   = useParams()
   const navigate   = useNavigate()
   const dispatch   = useDispatch()
   const posts      = useSelector((s) => s.post.posts)
-  const [post, setPost]       = useState(() => posts.find((p) => p.$id === slug))
-  const [loading, setLoading] = useState(!post)
+  const userData   = useSelector((s) => s.auth.userData)
 
+  const [post, setPost]       = useState(null)
+  const [loading, setLoading] = useState(true)
+
+  // ✅ Always fetch fresh so we have the latest userId for ownership check
   useEffect(() => {
-    if (post) { setLoading(false); return }
     setLoading(true)
     dbService.getPost(slug)
       .then((fetched) => {
-        if (fetched) {
-          setPost(fetched)
-          dispatch(setPosts([fetched, ...posts.filter((p) => p.$id !== fetched.$id)]))
-        } else navigate('/')
+        if (!fetched) {
+          navigate('/')
+          return
+        }
+
+        // ✅ Ownership guard: redirect if the logged-in user is not the author
+        if (fetched.userId !== userData?.$id) {
+          toastError('You are not allowed to edit this post.')
+          navigate('/')
+          return
+        }
+
+        setPost(fetched)
+        dispatch(setPosts([fetched, ...posts.filter((p) => p.$id !== fetched.$id)]))
       })
       .catch(() => navigate('/'))
       .finally(() => setLoading(false))
-  }, [dispatch, navigate, post, posts, slug])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [slug])
 
   if (loading) {
     return (

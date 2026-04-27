@@ -8,17 +8,23 @@ import {
 } from "../controllers/post.controller.js";
 import { protect } from "../middleware/auth.middleware.js";
 import { validate } from "../middleware/validate.middleware.js";
-import { validateCreatePost, validateUpdatePost } from "../validators/post.validators.js";
+import {
+  validateCreatePost,
+  validateUpdatePost,
+} from "../validators/post.validators.js";
 
 const router = Router();
 
-router.use(protect);
+// ✅ PUBLIC ROUTES
+router.route("/").get(getPosts);
+router.route("/:identifier").get(getPostByIdOrSlug);
 
-router.route("/").get(getPosts).post(validate(validateCreatePost), createPost);
+// 🔐 PROTECTED ROUTES
+router.route("/").post(protect, validate(validateCreatePost), createPost);
+
 router
   .route("/:identifier")
-  .get(getPostByIdOrSlug)
-  .put(validate(validateUpdatePost), updatePost)
-  .delete(deletePost);
+  .put(protect, validate(validateUpdatePost), updatePost)
+  .delete(protect, deletePost);
 
 export default router;
